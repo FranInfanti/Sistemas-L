@@ -1,11 +1,7 @@
-# sistemas-l
+# Sistemas-L
+Francisco Infanti 110822
 
-A Clojure library designed to ... well, that part is up to you.
-
-## Usage
-
-FIXME
-
+Franco Alani 111147
 ## License
 
 Copyright © 2024 FIXME
