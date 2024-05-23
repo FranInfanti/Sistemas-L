@@ -8,8 +8,12 @@
     (with-open [reader (io/reader file)] (apply conj [] (line-seq reader)))
     (catch Exception _)))
 
-(defn gen-patron [axioma remplazos it]
-  "Se recibe el axioma y como se va remplazado"
+
+(defn gen-patron [axioma reemp it]
+  (if (zero? it)
+    (apply str axioma)
+    (gen-patron (apply str (sequence (replace reemp (vec axioma)))) reemp (dec it))
+    )
   )
 
 (defn -main [inputFile it outputFile]
