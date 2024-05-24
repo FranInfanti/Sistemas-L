@@ -11,7 +11,7 @@
 
 (defn gen-patron [axioma reemp it]
   (if (zero? it)
-    (apply str axioma)
+    axioma
     (gen-patron (apply str (sequence (replace reemp (vec axioma)))) reemp (dec it))
     )
   )
