@@ -8,12 +8,13 @@
     (with-open [reader (io/reader file)] (apply conj [] (line-seq reader)))
     (catch Exception _)))
 
-
 (defn gen-patron [axioma reemp it]
   (if (zero? it)
     axioma
     (gen-patron (apply str (sequence (replace reemp (vec axioma)))) reemp (dec it))
     )
+  )
+
 (defn hash-create [remp]
   (println remp)
   (if (empty? remp) {}
@@ -25,14 +26,19 @@
     )
   )
 
+(defn gen-texto-svg [angulo patron]
+  (println angulo)
+  patron
+  )
 
-(defn gen-patron [axioma remplazos it]
-  (if (zero? it) (apply str axioma)
-                 ())
+(defn write-file [outputFile texto]
+  (println texto)
   )
 
 (defn -main [inputFile it outputFile]
   (let [info (read-file inputFile)
-        patron (gen-patron (seq (first (rest info))) () it)
+        angulo (Double/parseDouble (first info))
+        patron (gen-patron (first (rest info)) (hash-create (vec (drop 2 info))) it)
         ]
+    (write-file outputFile (gen-texto-svg angulo patron))
     ))
