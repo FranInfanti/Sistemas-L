@@ -29,7 +29,16 @@
 (defn tortuga [x y angulo]
   {:x x,  :y y ,:angulo angulo})
 
-(defn gen-texto-svg [patron pila-tortuga]
+
+(defn tortuga+angulo [tortuga angulo]
+  (update tortuga :angulo + angulo)
+  )
+
+(defn tortuga-angulo [tortuga angulo]
+  (update tortuga :angulo - angulo)
+  )
+
+(defn gen-texto-svg [patron pila-tortuga angulo]
   (println pila-tortuga)
   (if (empty? patron)
     " "
@@ -38,17 +47,18 @@
           tortuga (first pila-tortuga)
           resto-pila (rest pila-tortuga)]
       (cond
-        (= letra \F) (str "Avanzo. "           (gen-texto-svg resto (cons tortuga resto-pila))) ;una nueva lista con la tortuga modificada en pos en vez de la tortuga
-        (= letra \f) (str "Avanzo dibujando. " (gen-texto-svg resto (cons tortuga resto-pila))) ;lo mismo
-        (= letra \+) (str "Giro Der. "         (gen-texto-svg resto (cons tortuga resto-pila))) ;una nueva lista con la tortuga modificada en angulo en vez de la tortuga
-        (= letra \-) (str "Giro Izq. "         (gen-texto-svg resto (cons tortuga resto-pila))) ;lo mismo
-        (= letra \|) (str "Giro 180. "         (gen-texto-svg resto (cons tortuga resto-pila))) ;lo mismo
-        (= letra \[) (str "Apilo Tortuga. "    (gen-texto-svg resto (cons tortuga pila-tortuga)))
-        (and (not (empty? resto-pila)) (= letra  \])) (str "Desapilo Tortuga. " (gen-texto-svg resto resto-pila))
-        :else (gen-texto-svg resto pila-tortuga))
+        (= letra \F) (str "Avanzo. "           (gen-texto-svg resto (cons tortuga resto-pila) angulo)) ;una nueva lista con la tortuga modificada en pos en vez de la tortuga
+        (= letra \f) (str "Avanzo dibujando. " (gen-texto-svg resto (cons tortuga resto-pila) angulo)) ;lo mismo
+        (= letra \+) (gen-texto-svg resto (cons (tortuga+angulo tortuga angulo) resto-pila) angulo);una nueva lista con la tortuga modificada en angulo en vez de la tortuga
+        (= letra \-) (gen-texto-svg resto (cons (tortuga-angulo tortuga angulo) resto-pila) angulo) ;lo mismo
+        (= letra \|) (gen-texto-svg resto (cons (tortuga+angulo tortuga 180) resto-pila) angulo) ;lo mismo
+        (= letra \[) (str "Apilo Tortuga. "    (gen-texto-svg resto (cons tortuga pila-tortuga) angulo))
+        (and (not (empty? resto-pila)) (= letra  \])) (str "Desapilo Tortuga. " (gen-texto-svg resto resto-pila angulo))
+        :else (gen-texto-svg resto pila-tortuga angulo))
         )
       )
   )
+
 
 
 (defn write-file [outputFile texto]
@@ -59,7 +69,7 @@
   (let [info (read-file inputFile)
         angulo (Double/parseDouble (first info))
         patron (gen-patron (first (rest info)) (hash-create (vec (drop 2 info))) it)
-        pila-tortuga (list (tortuga 0 0 angulo))
+        pila-tortuga (list (tortuga 0 0 0))
         ]
-    (write-file outputFile (gen-texto-svg patron pila-tortuga))
+    (write-file outputFile (gen-texto-svg patron pila-tortuga angulo))
     ))
