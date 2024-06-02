@@ -60,6 +60,38 @@
     )
   )
 
+
+(defn gen-text-test [patron pila-tortuga angulo-default text]
+  (if (empty? patron) text
+                      (let [simbolo (first patron)
+                            tortuga (first pila-tortuga)
+                            rest-patron (rest patron)
+                            rest-pila (rest pila-tortuga)
+                            ]
+                        (cond
+                          (contains? MOVE-PLUMA simbolo) (let [new-punto (generar-punto (get tortuga :x) (get tortuga :y) (get tortuga :angulo))
+                                                               new-tortuga (tortuga-create (get new-punto :x) (get new-punto :y) (get tortuga :angulo))
+                                                               text-svg (gen-path new-punto (if (contains? #{\F \G} simbolo) \L \M))
+                                                               ]
+                                                           (recur rest-patron (cons new-tortuga rest-pila) angulo-default (apply str (concat text " " text-svg)))
+                                                           )
+
+                          (contains? ROTAR-PLUMA simbolo) (let [new-tortuga (tortuga-rotar tortuga simbolo (if (= \| simbolo) 180 angulo-default))]
+                                                            (recur rest-patron (cons new-tortuga rest-pila) angulo-default text)
+                                                            )
+
+                          (= APILAR simbolo) (recur rest-patron (cons tortuga pila-tortuga) angulo-default text)
+
+                          (and (not (empty? rest-pila)) (= simbolo DESAPILAR)) (let [text-svg (gen-path (first rest-pila) \M)]
+                                                                                 (recur rest-patron rest-pila angulo-default (apply str (concat text " " text-svg)))
+                                                                                 )
+                          :else (recur rest-patron pila-tortuga angulo-default text)
+                          )
+                        )
+                      )
+  )
+
+
 (defn gen-text [patron pila-tortuga angulo-default]
   (if (empty? patron) ""
     (let [simbolo (first patron)
@@ -97,7 +129,7 @@
         angulo (Double/parseDouble (first info))
         patron (gen-patron (first (rest info)) (hash-create (vec (nnext info))) it)
         pila-tortuga (list (tortuga-create 0 0 0))
-        text-svg (apply str (concat "M 0 0 "(gen-text (seq patron) pila-tortuga angulo)))
+        text-svg (gen-text-test (seq patron) pila-tortuga angulo "M 0 0")
         ]
     (println patron)
     (write-file! outputFile text-svg)
