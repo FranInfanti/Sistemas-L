@@ -41,8 +41,8 @@
 
 (defn generar-coordenada [x y angulo]
   "Recibe dos coordenadas y un angulo. A partir de eso genera un punto"
-  (let [u (+ (* LAMBDA (math/sin (math/to-radians (- angulo 90)))) x)
-        v (+ (* LAMBDA (math/cos (math/to-radians (- angulo 90)))) y)
+  (let [u (+ (* LAMBDA (math/cos (math/to-radians (- angulo 90)))) x)
+        v (+ (* LAMBDA (math/sin (math/to-radians (- angulo 90)))) y)
         ]
     (hash-map :x u :y v)
     )
@@ -71,8 +71,8 @@
 (defn nuevos-datos [datos coords text-svg]
   (hash-map :xmin  (min (get datos :xmin) (get coords :x))
             :ymin  (min (get datos :ymin) (get coords :y))
-            :xmax  (max (get datos :xmin) (get coords :x))
-            :ymax  (max (get datos :xmax) (get coords :y))
+            :xmax  (max (get datos :xmax) (get coords :x))
+            :ymax  (max (get datos :ymax) (get coords :y))
             :texto (str (get datos :texto) " "  text-svg))
   )
 
@@ -107,8 +107,20 @@
   )
 
 
-(defn complete-svg [text]
-  (str "<svg viewBox=\"-1000.0 -1000.00000000000001 1000.0 1000.00000000000001\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\" " text "\" stroke-width=\"1\" stroke=\"black\" fill=\"none\"/></svg>")
+(defn gen-viewbox [datos]  ;Dentro de los datos sigue estando el texto aunque es inutil aca
+  (let [xmin (- (get datos :xmin) (double (/ (abs (- (get datos :xmax) (get datos :xmin))) 10 )))
+        ymin (- (get datos :ymin) (double (/ (abs (- (get datos :ymax) (get datos :ymin))) 10 )))
+        xmax (+ (get datos :xmax) (double (/ (abs (- (get datos :xmax) (get datos :xmin))) 10 )))
+        ymax (+ (get datos :ymax) (double (/ (abs (- (get datos :ymax) (get datos :ymin))) 10 )))
+        ancho (abs (- xmax xmin))
+        alto (abs (- ymax ymin))
+        ]
+    (str xmin " " ymin " " ancho " " alto)
+    )
+  )
+
+(defn complete-svg [viewbox svg]
+  (str "<svg viewBox=\" " viewbox " \" xmlns=\"http://www.w3.org/2000/svg\"><path d=\" " svg "\" stroke-width=\"1\" stroke=\"black\" fill=\"none\"/></svg>")
   )
 
 (defn write-file! [outputFile text]
@@ -127,6 +139,6 @@
         text-svg (gen-text patron pila-tortuga angulo (datos-create "M 0 0 ") )
         ]
     (println text-svg)
-    (write-file! outputFile (complete-svg (get text-svg :texto)))
+    (write-file! outputFile (complete-svg (gen-viewbox text-svg) (get text-svg :texto)))
     )
   )
