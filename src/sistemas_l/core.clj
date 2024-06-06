@@ -7,6 +7,10 @@
 (def MOVE-PLUMA #{\F \G \f \g})
 (def ROTAR-PLUMA #{\+ \- \|})
 (def PILA-TORTUGA #{\[ \]})
+(def SVG-LINE " <line x1=\" %x1 \" y1=\" %y1 \" x2= \" %x2 \" y2= \" %y2 \" stroke-width=\"1\" stroke=\"black\" />")
+
+
+(def PILA-TORTUGA #{\[ \]})
 
 (defn read-file! [file]
   "Recibe un archivo por parametro, si existe, lee su contenido y escribe como un vector"
@@ -48,9 +52,18 @@
     )
   )
 
-(defn gen-svg [punto simbolo]
+(defn gen-svg [inicio final simbolo]
   "Recibe un punto y un simbolo. Con esto genera un texto del tipo M x y ó L x y"
-  (str simbolo " " (get punto :x) " " (get punto :y))
+  (if (contains? #{\F \G} simbolo)
+    (let [svg-line SVG-LINE]
+      (-> svg-line
+          (clojure.string/replace #"%x1" (str (get inicio :x)))
+          (clojure.string/replace #"%x2" (str (get final :x)))
+          (clojure.string/replace #"%y1" (str (get inicio :y)))
+          (clojure.string/replace #"%y2" (str (get final :y))))
+      )
+    ""
+    )
   )
 
 (defn tortuga-create [x y angulo]
@@ -92,14 +105,13 @@
       (cond
         (contains? MOVE-PLUMA simbolo) (let [new-punto (generar-coordenada (get tortuga :x) (get tortuga :y) (get tortuga :angulo))
                                              new-tortuga (tortuga-create (get new-punto :x) (get new-punto :y) (get tortuga :angulo))
-                                             text-svg (gen-svg new-punto (if (contains? #{\F \G} simbolo) \L \M))
+                                             text-svg (gen-svg tortuga new-tortuga simbolo)
                                              ]
                                          (recur rest-patron (conj rest-pila new-tortuga) angulo-default (nuevos-datos datos new-tortuga text-svg)))
         (contains? ROTAR-PLUMA simbolo) (let [new-tortuga (tortuga-rotar tortuga simbolo (if (= \| simbolo) 180 angulo-default))]
                                           (recur rest-patron (conj rest-pila new-tortuga) angulo-default datos))
-        (= \[ simbolo) (gen-text rest-patron (conj pila-tortuga tortuga) angulo-default datos)
-        (and (not (empty? rest-pila)) (= simbolo \])) (let [text-svg (gen-svg (peek rest-pila) \M)]
-                                                        (recur rest-patron rest-pila angulo-default (nuevos-datos datos tortuga text-svg)))
+        (= \[ simbolo) (recur rest-patron (conj pila-tortuga tortuga) angulo-default datos)
+        (and (not (empty? rest-pila)) (= simbolo \])) (recur rest-patron rest-pila angulo-default (nuevos-datos datos tortuga ""))
         :else (recur rest-patron pila-tortuga angulo-default datos)
         )
       )
@@ -120,7 +132,7 @@
   )
 
 (defn complete-svg [viewbox svg]
-  (str "<svg viewBox=\" " viewbox " \" xmlns=\"http://www.w3.org/2000/svg\"><path d=\" " svg "\" stroke-width=\"1\" stroke=\"black\" fill=\"none\"/></svg>")
+  (str "<svg viewBox=\" " viewbox " \" xmlns=\"http://www.w3.org/2000/svg\">" svg "</svg>")
   )
 
 (defn write-file! [outputFile text]
@@ -136,7 +148,7 @@
         angulo (Double/parseDouble (first info))
         patron (gen-patron (first (rest info)) (hash-create (vec (nnext info))) it)
         pila-tortuga (list (tortuga-create 0 0 0))
-        text-svg (gen-text patron pila-tortuga angulo (datos-create "M 0 0 ") )
+        text-svg (gen-text patron pila-tortuga angulo (datos-create " ") )
         ]
     (println text-svg)
     (write-file! outputFile (complete-svg (gen-viewbox text-svg) (get text-svg :texto)))
