@@ -7,10 +7,11 @@
 (def MOVE-PLUMA #{\F \G \f \g})
 (def ROTAR-PLUMA #{\+ \- \|})
 (def PILA-TORTUGA #{\[ \]})
-(def SVG-LINE " <line x1=\" %x1 \" y1=\" %y1 \" x2= \" %x2 \" y2= \" %y2 \" stroke-width=\"1\" stroke=\"black\" />")
-
-
-(def PILA-TORTUGA #{\[ \]})
+(def SVG "<svg viewBox=\"%viewbox\" xmlns=\"http://www.w3.org/2000/svg\"> %svg </svg>")
+(def SVG-LINE " <line x1=\"%x1\" y1=\"%y1\" x2= \"%x2\" y2=\"%y2\" stroke-width=\"%grosor\" stroke=\"%color\" />")
+(def SVG-CIRCLE "<circle cx=\"%x\" cy=\"%y\" r=\"%radio\" fill=\"%color\"/>")
+(def COLORES #{\a \b \c})
+(def GROSOR #{\1 \2 \3 \4 \5 \6 \7 \8 \9})
 
 (defn read-file! [file]
   "Recibe un archivo por parametro, si existe, lee su contenido y escribe como un vector"
@@ -20,7 +21,7 @@
 
 (defn gen-patron [axioma remp it]
   (if (zero? it) axioma
-                 (gen-patron (apply str (sequence (replace remp (vec axioma)))) remp (dec it))
+                 (recur (apply str (sequence (replace remp (vec axioma)))) remp (dec it))
                  )
   )
 
@@ -52,18 +53,32 @@
     )
   )
 
-(defn gen-svg [inicio final simbolo]
+(defn gen-svg [inicio final simbolo datos]
   "Recibe un punto y un simbolo. Con esto genera un texto del tipo M x y ó L x y"
   (if (contains? #{\F \G} simbolo)
     (let [svg-line SVG-LINE]
       (-> svg-line
-          (clojure.string/replace #"%x1" (str (get inicio :x)))
-          (clojure.string/replace #"%x2" (str (get final :x)))
-          (clojure.string/replace #"%y1" (str (get inicio :y)))
-          (clojure.string/replace #"%y2" (str (get final :y))))
+          (clojure.string/replace #"%x1"      (str (get inicio :x)))
+          (clojure.string/replace #"%x2"      (str (get final :x)))
+          (clojure.string/replace #"%y1"      (str (get inicio :y)))
+          (clojure.string/replace #"%y2"      (str (get final :y)))
+          (clojure.string/replace #"%grosor"  (str (get datos :grosor)))
+          (clojure.string/replace #"%color"   (str (get datos :color)))
+          )
       )
     ""
     )
+  )
+
+(defn gen-circle-svg [posicion datos]
+    (let [svg-line SVG-CIRCLE]
+      (-> svg-line
+          (clojure.string/replace #"%x"     (str (get posicion :x)))
+          (clojure.string/replace #"%y"     (str (get posicion :y)))
+          (clojure.string/replace #"%color" (get datos :color))
+          (clojure.string/replace #"%radio" (str (double  (/ (Double/parseDouble (str (get datos :grosor))) 2)) ))
+          )
+      )
   )
 
 (defn tortuga-create [x y angulo]
@@ -80,21 +95,34 @@
     )
   )
 
+(defn nuevo-color [datos simbolo]
+  (case simbolo
+    \a (assoc datos :color "black")
+    \b (assoc datos :color "grey")
+    )
+  )
+
+(defn nuevo-grosor [datos simbolo]
+  (assoc datos :grosor simbolo)
+  )
 
 (defn nuevos-datos [datos coords text-svg]
-  (hash-map :xmin  (min (get datos :xmin) (get coords :x))
-            :ymin  (min (get datos :ymin) (get coords :y))
-            :xmax  (max (get datos :xmax) (get coords :x))
-            :ymax  (max (get datos :ymax) (get coords :y))
-            :texto (str (get datos :texto) " "  text-svg))
+  (hash-map :xmin   (min (get datos :xmin) (get coords :x))
+            :ymin   (min (get datos :ymin) (get coords :y))
+            :xmax   (max (get datos :xmax) (get coords :x))
+            :ymax   (max (get datos :ymax) (get coords :y))
+            :texto  (str (get datos :texto) " "  text-svg)
+            :color  (get datos :color)
+            :grosor (get datos :grosor)
+            )
   )
 
 (defn datos-create [texto]
-  (hash-map :xmin 0 :ymin 0 :xmax 0 :ymax 0 :texto texto)
+  (hash-map :xmin 0 :ymin 0 :xmax 0 :ymax 0 :texto texto :grosor \1 :color "black")
   )
 
 (defn gen-text [patron pila-tortuga angulo-default datos]
-  (println pila-tortuga)
+  (println datos)
   (if (empty? patron)
     datos
     (let [simbolo (first patron)
@@ -105,38 +133,44 @@
       (cond
         (contains? MOVE-PLUMA simbolo) (let [new-punto (generar-coordenada (get tortuga :x) (get tortuga :y) (get tortuga :angulo))
                                              new-tortuga (tortuga-create (get new-punto :x) (get new-punto :y) (get tortuga :angulo))
-                                             text-svg (gen-svg tortuga new-tortuga simbolo)
+                                             text-svg (gen-svg tortuga new-tortuga simbolo datos)
                                              ]
                                          (recur rest-patron (conj rest-pila new-tortuga) angulo-default (nuevos-datos datos new-tortuga text-svg)))
         (contains? ROTAR-PLUMA simbolo) (let [new-tortuga (tortuga-rotar tortuga simbolo (if (= \| simbolo) 180 angulo-default))]
                                           (recur rest-patron (conj rest-pila new-tortuga) angulo-default datos))
+        (contains? COLORES simbolo) (recur rest-patron pila-tortuga angulo-default (nuevo-color  datos simbolo))
+        (contains? GROSOR simbolo)  (recur rest-patron pila-tortuga angulo-default (nuevo-grosor datos simbolo))
+        (= \L simbolo) (let [circle-svg (gen-circle-svg tortuga datos)]
+                                    (recur rest-patron pila-tortuga angulo-default (nuevos-datos datos tortuga circle-svg)))
         (= \[ simbolo) (recur rest-patron (conj pila-tortuga tortuga) angulo-default datos)
-        (and (not (empty? rest-pila)) (= simbolo \])) (recur rest-patron rest-pila angulo-default (nuevos-datos datos tortuga ""))
+        (and (not (empty? rest-pila)) (= simbolo \])) (recur rest-patron rest-pila angulo-default datos)
         :else (recur rest-patron pila-tortuga angulo-default datos)
         )
       )
     )
   )
 
-
 (defn gen-viewbox [datos]  ;Dentro de los datos sigue estando el texto aunque es inutil aca
-  (let [xmin (- (get datos :xmin) (double (/ (abs (- (get datos :xmax) (get datos :xmin))) 10 )))
-        ymin (- (get datos :ymin) (double (/ (abs (- (get datos :ymax) (get datos :ymin))) 10 )))
-        xmax (+ (get datos :xmax) (double (/ (abs (- (get datos :xmax) (get datos :xmin))) 10 )))
-        ymax (+ (get datos :ymax) (double (/ (abs (- (get datos :ymax) (get datos :ymin))) 10 )))
+  (let [xmin  (- (get datos :xmin) (double (/ (abs (- (get datos :xmax) (get datos :xmin))) 10 )))
+        ymin  (- (get datos :ymin) (double (/ (abs (- (get datos :ymax) (get datos :ymin))) 10 )))
+        xmax  (+ (get datos :xmax) (double (/ (abs (- (get datos :xmax) (get datos :xmin))) 10 )))
+        ymax  (+ (get datos :ymax) (double (/ (abs (- (get datos :ymax) (get datos :ymin))) 10 )))
         ancho (abs (- xmax xmin))
-        alto (abs (- ymax ymin))
+        alto  (abs (- ymax ymin))
         ]
-    (str xmin " " ymin " " ancho " " alto)
+    (clojure.string/join " " [xmin ymin ancho alto])
     )
   )
 
-(defn complete-svg [viewbox svg]
-  (str "<svg viewBox=\" " viewbox " \" xmlns=\"http://www.w3.org/2000/svg\">" svg "</svg>")
+(defn complete-svg [viewbox text-svg]
+  (let [svg SVG]
+    (-> svg
+        (clojure.string/replace #"%viewbox" viewbox)
+        (clojure.string/replace #"%svg" text-svg))
+    )
   )
 
 (defn write-file! [outputFile text]
-  (println text)
   (try
     (spit outputFile text)
     (catch Exception _))
@@ -150,7 +184,7 @@
         pila-tortuga (list (tortuga-create 0 0 0))
         text-svg (gen-text patron pila-tortuga angulo (datos-create " ") )
         ]
-    (println text-svg)
+    (println patron)
     (write-file! outputFile (complete-svg (gen-viewbox text-svg) (get text-svg :texto)))
     )
   )
