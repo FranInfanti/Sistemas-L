@@ -14,6 +14,7 @@
 (def UP-PLUMA \M)
 (def DOWN-PLUMA \L)
 (def PUNTO-INICIAL "M 0 0 ")
+(def SVG "<svg viewBox=\"%viewbox\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"%svg\" stroke-width=\"1\" stroke=\"black\" fill=\"none\"/></svg>")
 
 (defn read-file! [file]
   "Recibe un archivo por parametro, si existe, lee su contenido y lo escribe como un vector"
@@ -23,7 +24,7 @@
 
 (defn gen-patron [axioma remp it]
   "Recibe un axioma, los remplazos posibles de cada caracter del axioma y la cantidad de iteraciónes a realizar"
-  (if (zero? it) axioma (gen-patron (apply str (sequence (replace remp (vec axioma)))) remp (dec it))))
+  (if (zero? it) axioma (recur (apply str (sequence (replace remp (vec axioma)))) remp (dec it))))
 
 (defn hash-create [remp]
   "Recibe un vector con los remplazos (remp) y lo separa en un hash, con :key el caracter asociado al remplazo
@@ -98,7 +99,11 @@
     (str x-min " " y-min " " ancho " " alto)))
 
 (defn format-svg [viewbox text-svg]
-  (str "<svg viewBox=\" " viewbox " \" xmlns=\"http://www.w3.org/2000/svg\"><path d=\" " text-svg "\" stroke-width=\"1\" stroke=\"black\" fill=\"none\"/></svg>"))
+  (let [final-svg SVG]
+    (-> final-svg
+        (clojure.string/replace #"%viewbox" viewbox)
+        (clojure.string/replace #"%svg" text-svg))
+    ))
 
 (defn write-file! [outputFile text]
   "Recibe el archivo de salida y el texto a escribir en este archivo"
