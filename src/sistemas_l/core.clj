@@ -19,41 +19,19 @@
 (def replace-text #"%svg")
 
 (defn read-file! [file]
-  "Recibe un archivo por parametro, si existe, lee su contenido y lo escribe como un vector"
   (try
     (with-open [reader (io/reader file)] (apply conj [] (line-seq reader)))
     (catch Exception _)))
 
-(defn gen-patron [axioma remp it]
-  "Recibe un axioma, los remplazos posibles de cada caracter del axioma y la cantidad de iteraciónes a realizar"
-  (if (zero? it) axioma (recur (apply str (sequence (replace remp (vec axioma)))) remp (dec it))))
-
 (defn hash-create [remplazos]
-  "Recibe un vector con los remplazos y lo separa en un hash, con :key el caracter asociado al remplazo
-  y value el remplazo en si"
   (if (empty? remplazos)
     {}
     (let [key (first (seq (first remplazos)))
           value (apply str (nnext (seq (first remplazos))))]
       (merge (hash-map key value) (hash-create (rest remplazos))))))
 
-(defn gen-nueva-pos [tortuga]
-  "Recibe una tortuga. A partir de eso genera un nuevo punto, que seria la nueva posicion de la tortuga"
-  (let [u (+ (* lambda (math/cos (math/to-radians (- (get tortuga :angulo) angulo-corrector)))) (get tortuga :x))
-        v (+ (* lambda (math/sin (math/to-radians (- (get tortuga :angulo) angulo-corrector)))) (get tortuga :y))]
-    (hash-map :x u, :y v, :angulo (get tortuga :angulo))))
-
-(defn gen-svg [tortuga simbolo]
-  "Recibe un punto y un simbolo. Con esto genera un texto del tipo 'M x y' o 'L x y'"
-  (clojure.string/join " " [simbolo (get tortuga :x) (get tortuga :y)]))
-
-(defn tortuga-create [x y angulo]
-  "Crea una Tortuga en la que guarda, en un hash-map, de donde empezo a dibujar, donde esta y el angulo con el que tiene que dibujar"
-  (hash-map :x x, :y y, :angulo angulo))
-
-(defn tortuga-rotar [tortuga rotar angulo-default]
-  "Recibe una tortuga y un simbolo que indica hacia donde rotar"
-  (if (= rotar rotar-derecha) (update tortuga :angulo + angulo-default) (update tortuga :angulo - angulo-default)))
+(defn gen-patron [axioma remp it]
+  (if (zero? it) axioma (recur (apply str (sequence (replace remp (vec axioma)))) remp (dec it))))
 
 (defn datos-create [text] (hash-map :xmin 0 :ymin 0 :xmax 0 :ymax 0 :text text))
 
@@ -65,6 +43,16 @@
     :ymax (max (get datos :ymax) (get tortuga :y))
     :text (str (get datos :text) " " text-svg)))
 
+(defn gen-nueva-pos [tortuga]
+  (let [u (+ (* lambda (math/cos (math/to-radians (- (get tortuga :angulo) angulo-corrector)))) (get tortuga :x))
+        v (+ (* lambda (math/sin (math/to-radians (- (get tortuga :angulo) angulo-corrector)))) (get tortuga :y))]
+    (hash-map :x u, :y v, :angulo (get tortuga :angulo))))
+
+(defn gen-svg [tortuga simbolo] (clojure.string/join " " [simbolo (get tortuga :x) (get tortuga :y)]))
+
+(defn tortuga-rotar [tortuga rotar angulo-default]
+  (if (= rotar rotar-derecha) (update tortuga :angulo + angulo-default) (update tortuga :angulo - angulo-default)))
+
 (defn gen-text [patron pila-tortuga angulo-default datos]
   (if (empty? patron)
     datos
@@ -75,21 +63,16 @@
         (contains? move-pluma simbolo) (let [new-tortuga (gen-nueva-pos tortuga)
                                              text-svg (gen-svg new-tortuga (if (contains? dibujar simbolo) down-pluma up-pluma))]
                                          (recur (rest patron) (conj rest-pila new-tortuga) angulo-default (new-datos datos new-tortuga text-svg)))
-
         (contains? rotar-pluma simbolo) (let [new-tortuga (tortuga-rotar tortuga simbolo (if (= rotar-180 simbolo) 180 angulo-default))]
                                           (recur (rest patron) (conj rest-pila new-tortuga) angulo-default datos))
-
         (= apilar simbolo) (recur (rest patron) (conj pila-tortuga tortuga) angulo-default datos)
-
         (= desapilar simbolo) (recur (rest patron) rest-pila angulo-default (new-datos datos tortuga (gen-svg (peek rest-pila) up-pluma)))
-
         :else (recur (rest patron) pila-tortuga angulo-default datos)))))
 
 (defn calcular-extremos [extremo x y max]
   (if (nil? max) (+ extremo (double (/ (abs (- x y)) lambda))) (- extremo (double (/ (abs (- x y)) lambda)))))
 
 (defn gen-viewbox [datos]
-  "Calcula los parametros del viewbox para que la imagen se vea como corresponde"
   (let [x-min (calcular-extremos (get datos :xmin) (get datos :xmax) (get datos :xmin) 0)
         y-min (calcular-extremos (get datos :ymin) (get datos :ymax) (get datos :ymin) 0)
         x-max (calcular-extremos (get datos :xmax) (get datos :xmax) (get datos :xmin) nil)
@@ -99,20 +82,17 @@
     (clojure.string/join " " [x-min y-min ancho alto])))
 
 (defn format-svg [viewbox text-svg]
-  "Genera el texto svg completo para poder ya escribirlo en el archivo"
   (let [final-svg svg] (-> final-svg (clojure.string/replace replace-viewbox viewbox) (clojure.string/replace replace-text text-svg))))
 
 (defn write-file! [outputFile text]
-  "Recibe el archivo de salida y el texto a escribir en este archivo"
   (try
     (with-open [w (io/writer outputFile)] (.write w (str text)))
     (catch Exception _)))
 
 (defn -main [inputFile it outputFile]
-  "Recibe el archivo .sl, la cantidad de iteraciones a realizar y el archivo .xml donde se escribe el resultado"
   (let [info (read-file! inputFile)
         angulo (Double/parseDouble (first info))
         patron (gen-patron (first (rest info)) (hash-create (nnext info)) it)
-        pila-tortuga (list (tortuga-create 0 0 0))
+        pila-tortuga (list (hash-map :x 0 :y 0 :angulo 0))
         text-svg (gen-text patron pila-tortuga angulo (datos-create (gen-svg (peek pila-tortuga) up-pluma)))]
     (write-file! outputFile (format-svg (gen-viewbox text-svg) (get text-svg :text)))))
