@@ -1,7 +1,8 @@
 (ns sistemas-l.core
   (:gen-class)
   (:require [clojure.java.io :as io])
-  (:require [clojure.math :as math]))
+  (:require [clojure.math :as math])
+  (:require [clojure.string :as string]))
 
 (def lambda 10)
 (def move-pluma #{\F \G \f \g})
@@ -52,7 +53,7 @@
         v (+ (* lambda (math/sin (math/to-radians (- (get tortuga :angulo) angulo-corrector)))) (get tortuga :y))]
     (hash-map :x u, :y v, :angulo (get tortuga :angulo))))
 
-(defn gen-svg [tortuga simbolo] (clojure.string/join " " [simbolo (get tortuga :x) (get tortuga :y)]))
+(defn gen-svg [tortuga simbolo] (string/join " " [simbolo (get tortuga :x) (get tortuga :y)]))
 
 (defn tortuga-rotar [tortuga rotar angulo-default]
   "Rota la tortuga para la derecha o izquierda"
@@ -71,7 +72,7 @@
         (contains? rotar-pluma simbolo) (let [new-tortuga (tortuga-rotar tortuga simbolo (if (= rotar-180 simbolo) 180 angulo-default))]
                                           (recur (rest patron) (conj rest-pila new-tortuga) angulo-default datos))
         (= apilar simbolo) (recur (rest patron) (conj pila-tortuga tortuga) angulo-default datos)
-        (= desapilar simbolo) (recur (rest patron) rest-pila angulo-default (new-datos datos tortuga (gen-svg (peek rest-pila) up-pluma)))
+        (and (= simbolo desapilar) (not (empty? rest-pila))) (recur (rest patron) rest-pila angulo-default (new-datos datos tortuga (gen-svg (peek rest-pila) up-pluma)))
         :else (recur (rest patron) pila-tortuga angulo-default datos)))))
 
 (defn calcular-extremos [extremo x y max]
@@ -85,11 +86,11 @@
         y-max (calcular-extremos (get datos :ymax) (get datos :ymax) (get datos :ymin) nil)
         ancho (abs (- x-max x-min))
         alto (abs (- y-max y-min))]
-    (clojure.string/join " " [x-min y-min ancho alto])))
+    (string/join " " [x-min y-min ancho alto])))
 
 (defn format-svg [viewbox text-svg]
   "Genera el texto svg completo para poder ya escribirlo en el archivo"
-  (let [final-svg svg] (-> final-svg (clojure.string/replace replace-viewbox viewbox) (clojure.string/replace replace-text text-svg))))
+  (let [final-svg svg] (-> final-svg (string/replace replace-viewbox viewbox) (string/replace replace-text text-svg))))
 
 (defn write-file! [outputFile text]
   "Recibe el nombre de un archivo y un texto a escribir en este"
