@@ -27,14 +27,13 @@
 
 (defn hash-create [remplazos]
   "Crea un hash con :key el caracter asociado al remplazo y :value el remplazo en si"
-  (when (seq remplazos)
-    (let [key (first (seq (first remplazos)))
-          value (apply str (nnext (seq (first remplazos))))]
+  (when-let [key (ffirst remplazos)]
+    (let [value (apply str (nnext (first remplazos)))]
       (merge (hash-map key value) (hash-create (rest remplazos))))))
 
 (defn gen-patron [axioma remp it]
   "Devuelve el patron de simbolos sobre el cual se va a basar el dibujo"
-  (if (zero? it) axioma (recur (apply str (sequence (replace remp (vec axioma)))) remp (dec it))))
+  (if (zero? it) axioma (recur (apply str (replace remp axioma)) remp (dec it))))
 
 (defn datos-create [text] (hash-map :xmin 0 :ymin 0 :xmax 0 :ymax 0 :text text))
 
@@ -50,7 +49,7 @@
   "Calcula una nueva posicion en base a la posicion actual de la tortuga y el angulo actual de la tortuga"
   (let [u (+ (* lambda (math/cos (math/to-radians (- (:angulo tortuga) angulo-corrector)))) (:x tortuga))
         v (+ (* lambda (math/sin (math/to-radians (- (:angulo tortuga) angulo-corrector)))) (:y tortuga))]
-    (hash-map :x u, :y v, :angulo (get tortuga :angulo))))
+    (hash-map :x u, :y v, :angulo (:angulo tortuga))))
 
 (defn gen-svg [tortuga simbolo] (str/join " " [simbolo (:x tortuga) (:y tortuga)]))
 
@@ -106,7 +105,7 @@
 (defn -main [inputFile it outputFile]
   (when-let [info (seq (read-file! inputFile))]
     (let [angulo (Double/parseDouble (first info))
-          patron (gen-patron (first (rest info)) (hash-create (nnext info)) it)
+          patron (gen-patron (second info) (hash-create (nnext info)) it)
           pila-tortuga (list (hash-map :x 0 :y 0 :angulo 0))
           text-svg (gen-text patron pila-tortuga angulo (datos-create (gen-svg (peek pila-tortuga) up-pluma)))]
       (write-file! outputFile (format-svg (gen-viewbox text-svg) (get text-svg :text))))))
