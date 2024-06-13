@@ -15,9 +15,9 @@
 (def angulo-corrector 90)
 (def up-pluma \M)
 (def down-pluma \L)
-(def svg "<svg viewBox=\"%viewbox\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"%svg\" stroke-width=\"1\" stroke=\"black\" fill=\"none\"/></svg>")
-(def replace-viewbox #"%viewbox")
-(def replace-text #"%svg")
+(def svg "<svg viewBox=\"%s\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"%s\" stroke-width=\"1\" stroke=\"black\" fill=\"none\"/></svg>")
+(def svg-path "%s %.4f %.4f")
+(def tortuga-inicial {:x 0.0 :y 0.0 :angulo 0.0})
 
 (defn read-file! [file]
   "Recibe un archivo por parametro, si existe y puede abrilo, lee su contenido y lo escribe en un vector"
@@ -33,34 +33,43 @@
 
 (defn gen-patron [axioma remp it]
   "Devuelve el patron de simbolos sobre el cual se va a basar el dibujo"
-  (if (zero? it) axioma (recur (apply str (replace remp axioma)) remp (dec it))))
+  (if (zero? it)
+    axioma
+    (recur (apply str (replace remp axioma)) remp (dec it))))
 
-(defn datos-create [text] (hash-map :xmin 0 :ymin 0 :xmax 0 :ymax 0 :text text))
+(defn datos-create [text] {:xmin 0 :ymin 0 :xmax 0 :ymax 0 :text text})
 
-(defn new-datos [datos tortuga text-svg]
-  (hash-map
-    :xmin (min (:xmin datos) (:x tortuga))
-    :ymin (min (:ymin datos) (:y tortuga))
-    :xmax (max (:xmax datos) (:x tortuga))
-    :ymax (max (:ymax datos) (:y tortuga))
-    :text (str (:text datos) " " text-svg)))
+(defn new-datos [datos posicion text-svg]
+  "Crea un nuevo dato actualizando el text y los maximos y minimos valores de x e y"
+  (-> datos
+      (update :xmin min (:x posicion))
+      (update :ymin min (:y posicion))
+      (update :xmax max (:x posicion))
+      (update :ymax max (:y posicion))
+      (update :text str " " text-svg)))
+
+(defn calcular-pos [pos angulo x]
+  (if x
+    (+ (* lambda (math/cos (math/to-radians (- angulo angulo-corrector)))) pos)
+    (+ (* lambda (math/sin (math/to-radians (- angulo angulo-corrector)))) pos)))
 
 (defn gen-new-posicion [tortuga]
   "Calcula una nueva posicion en base a la posicion actual de la tortuga y el angulo actual de la tortuga"
-  (let [u (+ (* lambda (math/cos (math/to-radians (- (:angulo tortuga) angulo-corrector)))) (:x tortuga))
-        v (+ (* lambda (math/sin (math/to-radians (- (:angulo tortuga) angulo-corrector)))) (:y tortuga))]
-    (hash-map :x u, :y v, :angulo (:angulo tortuga))))
+  (-> tortuga
+      (update :x calcular-pos (:angulo tortuga) 0)
+      (update :y calcular-pos (:angulo tortuga) nil)))
 
-(defn gen-svg [tortuga simbolo] (str/join " " [simbolo (:x tortuga) (:y tortuga)]))
+(defn gen-svg [tortuga simbolo] (format svg-path simbolo (:x tortuga) (:y tortuga)))
 
 (defn tortuga-rotar [tortuga rotar angulo-default]
   "Rota la tortuga para la derecha o izquierda"
-  (if (= rotar rotar-derecha) (update tortuga :angulo + angulo-default) (update tortuga :angulo - angulo-default)))
+  (if (= rotar rotar-derecha)
+    (update tortuga :angulo + angulo-default)
+    (update tortuga :angulo - angulo-default)))
 
 (defn gen-text [patron pila-tortuga angulo datos]
-  (if (seq patron)
-    (let [simbolo (first patron)
-          tortuga (peek pila-tortuga)
+  (if-let [simbolo (first patron)]
+    (let [tortuga (peek pila-tortuga)
           rest-pila (pop pila-tortuga)]
       (cond
         (contains? mover-pluma simbolo) (let [new-tortuga (gen-new-posicion tortuga)
@@ -90,11 +99,7 @@
         alto (abs (- y-max y-min))]
     (str/join " " [x-min y-min ancho alto])))
 
-(defn format-svg [viewbox text-svg]
-  "Genera el texto svg completo para poder ya escribirlo en el archivo"
-  (let [final-svg svg]
-    (-> final-svg (str/replace replace-viewbox viewbox)
-                  (str/replace replace-text text-svg))))
+(defn format-svg [viewbox text-svg] (format svg viewbox text-svg))
 
 (defn write-file! [outputFile text]
   "Recibe el nombre de un archivo y un texto a escribir en este"
@@ -106,6 +111,6 @@
   (when-let [info (seq (read-file! inputFile))]
     (let [angulo (Double/parseDouble (first info))
           patron (gen-patron (second info) (hash-create (nnext info)) it)
-          pila-tortuga (list (hash-map :x 0 :y 0 :angulo 0))
+          pila-tortuga (list tortuga-inicial)
           text-svg (gen-text patron pila-tortuga angulo (datos-create (gen-svg (peek pila-tortuga) up-pluma)))]
       (write-file! outputFile (format-svg (gen-viewbox text-svg) (get text-svg :text))))))
