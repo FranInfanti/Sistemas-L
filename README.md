@@ -2,6 +2,10 @@
 Francisco Infanti 110822
 
 Franco Alani 111147
+
+### Formula
+$$(X_1, X_2) + \lambda((-1)^n cos(\theta), sen(\theta))$$
+
 ## License
 
 Copyright © 2024 FIXME

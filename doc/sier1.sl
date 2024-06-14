@@ -1,0 +1,4 @@
+120
+F-G-G-
+F F-G+F+G-F
+G GG
