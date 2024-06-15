@@ -12,8 +12,9 @@
     (with-open [reader (io/reader file)] (apply conj [] (line-seq reader)))
     (catch Exception _ nil)))
 
-(defn hash-create [remp]
+(defn hash-create
   "Crea un hash con :key el caracter asociado al remplazo y :value el remplazo en si"
+  [remp]
   (when-let [key (ffirst remp)]
     (let [value (apply str (nnext (first remp)))]
       (merge (hash-map key value) (hash-create (rest remp))))))
@@ -51,7 +52,7 @@
     (format svg (:x posicion) (:y posicion) (double (/ (:grosor datos) 2)) (:color datos))))
 
 (defn tortuga-rotar [tortuga simbolo angulo-default]
-  (let [rotar {\+ angulo-default \- (- angulo-default) \| 180}]
+  (let [rotar {\+ angulo-default, \- (- angulo-default), \| 180}]
     (update tortuga :angulo + (get rotar simbolo))))
 
 (defn new-color [datos simbolo]
@@ -66,11 +67,11 @@
           rest-pila (pop pila-tortuga)]
       (case simbolo
         (\F \G \f \g) (let [new-tortuga (gen-new-pos tortuga)
-                         text-svg (gen-svg tortuga new-tortuga simbolo datos)]
-                     (recur (rest patron) (conj rest-pila new-tortuga) angulo (new-datos datos new-tortuga text-svg)))
+                            text-svg (gen-svg tortuga new-tortuga simbolo datos)]
+                        (recur (rest patron) (conj rest-pila new-tortuga) angulo (new-datos datos new-tortuga text-svg)))
 
         (\+ \- \|) (let [new-tortuga (tortuga-rotar tortuga simbolo angulo)]
-                      (recur (rest patron) (conj rest-pila new-tortuga) angulo datos))
+                     (recur (rest patron) (conj rest-pila new-tortuga) angulo datos))
 
         (\a \b) (recur (rest patron) pila-tortuga angulo (new-color datos simbolo))
 
@@ -81,8 +82,8 @@
         \[ (recur (rest patron) (conj pila-tortuga tortuga) angulo datos)
 
         \] (if (seq rest-pila)
-                    (recur (rest patron) rest-pila angulo datos)
-                    (recur (rest patron) pila-tortuga angulo datos))
+             (recur (rest patron) rest-pila angulo datos)
+             (recur (rest patron) pila-tortuga angulo datos))
 
         (recur (rest patron) pila-tortuga angulo datos)))
     datos))
@@ -118,6 +119,5 @@
     (let [angulo (Double/parseDouble (first info))
           patron (gen-patron (second info) (hash-create (nnext info)) (Integer/parseInt it))
           pila-tortuga (list {:x 0.0 :y 0.0 :angulo 0.0})
-          text-svg (gen-text patron pila-tortuga angulo
-                             {:xmin 0.0 :ymin 0.0 :xmax 0.0 :ymax 0.0 :text "" :grosor 1.0 :color "black"})]
+          text-svg (gen-text patron pila-tortuga angulo {:xmin 0.0 :ymin 0.0 :xmax 0.0 :ymax 0.0 :text "" :grosor 1.0 :color "black"})]
       (write-file! outputFile (format-svg (gen-viewbox text-svg) (:text text-svg))))))
