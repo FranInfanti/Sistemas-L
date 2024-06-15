@@ -8,7 +8,9 @@
 (def largo-linea 10)
 
 (defn read-file! [file]
-  (try (with-open [reader (io/reader file)] (apply conj [] (line-seq reader)))))
+  (try
+    (with-open [reader (io/reader file)] (apply conj [] (line-seq reader)))
+    (catch Exception _ nil)))
 
 (defn hash-create [remp]
   "Crea un hash con :key el caracter asociado al remplazo y :value el remplazo en si"
@@ -107,12 +109,14 @@
     (format svg viewbox text-svg)))
 
 (defn write-file! [outputFile text]
-  (try (with-open [w (io/writer outputFile)] (.write w (str text)))))
+  (try
+    (with-open [w (io/writer outputFile)] (.write w (str text)))
+    (catch Exception _ nil)))
 
 (defn -main [inputFile it outputFile]
   (when-let [info (seq (read-file! inputFile))]
     (let [angulo (Double/parseDouble (first info))
-          patron (gen-patron (second info) (hash-create (nnext info)) it)
+          patron (gen-patron (second info) (hash-create (nnext info)) (Integer/parseInt it))
           pila-tortuga (list {:x 0.0 :y 0.0 :angulo 0.0})
           text-svg (gen-text patron pila-tortuga angulo
                              {:xmin 0.0 :ymin 0.0 :xmax 0.0 :ymax 0.0 :text "" :grosor 1.0 :color "black"})]
