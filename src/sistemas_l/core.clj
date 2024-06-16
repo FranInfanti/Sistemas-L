@@ -56,7 +56,7 @@
     (update tortuga :angulo + (get rotar simbolo))))
 
 (defn new-color [datos simbolo]
-  (let [colores {\a "black" \b "yellow"}]
+  (let [colores {\a "black", \b "yellow"}]
     (assoc datos :color (get colores simbolo))))
 
 (defn new-grosor [datos simbolo] (assoc datos :grosor (Double/parseDouble (str simbolo))))
@@ -89,18 +89,18 @@
     datos))
 
 (defn calcular-extremos
-  "Calcula el extremo entre x1 x2 y usa se les agrega un 10% del ancho y alto"
+  "Se les agrega un 10% del ancho y alto base"
   [x1 x2]
-  [(+ x2 (double (/ (abs (- x1 x2)) 10)))
-   (- x1 (double (/ (abs (- x1 x2)) 10)))])
+  [(- x1 (double (/ (abs (- x1 x2)) 10)))
+   (+ x2 (double (/ (abs (- x1 x2)) 10)))])
 
 (defn gen-viewbox
   "Calcula los parametros del viewbox para que la imagen se vea como corresponde"
   [datos]
-  (let [x-min (second (calcular-extremos (:xmin datos) (:xmax datos)))
-        y-min (second (calcular-extremos (:ymin datos) (:ymax datos)))
-        x-max (first (calcular-extremos (:xmin datos) (:xmax datos)))
-        y-max (first (calcular-extremos (:ymin datos) (:ymax datos)))
+  (let [x-min (first (calcular-extremos (:xmin datos) (:xmax datos)))
+        y-min (first (calcular-extremos (:ymin datos) (:ymax datos)))
+        x-max (second (calcular-extremos (:xmin datos) (:xmax datos)))
+        y-max (second (calcular-extremos (:ymin datos) (:ymax datos)))
         ancho (abs (- x-max x-min))
         alto (abs (- y-max y-min))]
     (str/join " " [x-min y-min ancho alto])))
